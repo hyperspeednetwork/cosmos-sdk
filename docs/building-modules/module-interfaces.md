@@ -17,15 +17,50 @@ This document details how to build CLI and REST interfaces for a module.
 
 ## CLI
 
-One of the main interfaces for an application is the [command-line interface](../interfaces/cli.md). This entrypoint created by the application developer will add commands from the application's modules to make [**transactions**](../core/transactions.md) and [**queries**]().  
+One of the main interfaces for an application is the [command-line interface](../interfaces/cli.md). This entrypoint created by the application developer will add commands from the application's modules to make [**transactions**](../core/transactions.md) and [**queries**]().  The CLI files are typically found in the module's `/client/cli` folder.
 
 ### Transaction Commands
 
+[Transactions](../core/transactions.md) are created by users to wrap messages that trigger state changes in applications. Transaction commands typically have their own `tx.go` file in the module `/client/cli` folder. The commands are specified in getter functions prefixed with `GetCmd` followed by the name of the command. Getter functions should do the following:
+
+- **Argument: `codec`**. The getter function takes in an application `codec` as an argument and returns a reference to the `cobra.command`.
+- **Construct the command.** Read the [Cobra Documentation](https://github.com/spf13/cobra) for details on how to create commands.
+- **`RunE.`** The function should be specified as a `RunE` to allow for errors to be returned. This function encapsulates all of the logic to create a new transaction that is ready to be relayed to nodes.
+  + The function should first initialize a [`TxBuilder`](,,/core/transactions.md#txbuilder) with the application `codec`'s `TxEncoder`, as well as a new [`CLIContext`](./query-lifecycle.md#clicontext) with the `codec` and `AccountDecoder` from the application `codec`.
+  + If applicable, the `CLIContext` is used to retrieve any parameters such as the transaction originator's address to be used in the transaction.
+  + A [message](./messages.md) is created using all parameters parsed from the command arguments and `CLIContext`.
+  + The transaction is either generated offline or signed and broadcasted to the preconfigured node, depending on what the user wants.
+- **Flags.** Add any [flags](#flags) to the command.
+
+Finally, the module needs to have a `GetTxCmd`, which aggregates all of the transaction commands of the module. Application developers wishing to include the module's transactions will call this function to add them as subcommands in their CLI.
+
 ### Query Commands
+
+[Queries](./query.md) allow users to gather information about the application or network state. Query commands typically have their own `query.go` file in the module `/client/cli` folder. Like transaction commands, they are specified in getter functions and have the prefix `GetCmdQuery`. Getter functions should do the following:
+- **Arguments: `codec` and `queryRoute`.** In addition to taking in the application `codec`, query command getters also take a `queryRoute` used to construct a path [Baseapp](../core/baseapp.md) uses to route the query in the application.
+- **Construct the command.** Read the [Cobra Documentation](https://github.com/spf13/cobra) for details on how to create commands.
+- **`RunE`.** The function should be specified as a `RunE` to allow for errors to be returned. This function encapsulates all of the logic to create a new query that is ready to be relayed to nodes.
+  + The function should first initialize a new [`CLIContext`](./query-lifecycle.md#clicontext) with the application `codec`.
+  + If applicable, the `CLIContext` is used to retrieve any parameters (e.g. the query originator's address to be used in the query) and marshal them with the query parameter type, in preparation to be relayed to a node.
+  + Use the `queryRoute` to construct a route Baseapp will use to route the query to the appropriate [querier](./querier.md). Module queries are `custom` type queries.  
+  + Call the `CLIContext` query function to relay the query to a node and retrieve the response.
+  + Unmarshal the response and use the `CLIContext` to print the output back to the user.
+- **Flags.** Add any [flags](#flags) to the command.
+
+
+Finally, the module also needs a `GetQueryCmd`, which aggregates all of the query commands of the module. Application developers wishing to include the module's queries will call this function to add them as subcommands in their CLI.
+
+### Flags
+
+[Flags](../interfaces/cli.md#flags) are entered by the user and allow for command customizations. Examples include the fees or gas prices users are willing to pay for their transactions.
+
+The flags for a module are typically found in the `flags.go` file in the `/client/cli` folder. Module developers can create a list of possible flags including the value type, default value, and a description displayed if the user uses a `help` command. In each transaction getter function, they can add flags to the commands and, optionally, mark flags as _required_ so that an error is thrown if the user does not provide values for them.
+
+For full details on flags, visit the [Cobra Documentation](https://github.com/spf13/cobra).
 
 ## REST
 
-Application users may find the most intuitive methods of interfacing with the application are web services that use HTTP requests (e.g. a web wallet like [Lunie.io](lunie.io)). Thus, application developers will also use REST Routes to route HTTP requests to the application's modules. The module developer's responsibility is to define the REST client by defining routes for all possible requests and handlers for each of them.
+Application users may find the most intuitive methods of interfacing with the application are web services that use HTTP requests (e.g. a web wallet like [Lunie.io](lunie.io)). Thus, application developers will also use REST Routes to route HTTP requests to the application's modules. The module developer's responsibility is to define the REST client by defining routes for all possible requests and handlers for each of them. The REST interface file is typically found in the module's `/client/rest` folder.
 
 ### Request Types
 
@@ -33,16 +68,16 @@ Request types must be defined for all *transaction* requests. Conventionally, ea
 
 `BaseReq` is a type defined in the SDK that encapsulates much of the transaction configurations similar to CLI command flags:
 
-* From
-*	Memo
-*	ChainID
-*	AccountNumber
-*	Sequence
-*	Fees
-*	GasPrices
-*	Gas  
-*	GasAdjustment
-*	Simulate      
+* `From` indicates which account the transaction originates from. This account is used to sign the transaction.
+*	`Memo` sends a memo along with the transaction.
+*	`ChainID` specifies the unique identifier of the blockchain the transaction pertains to.
+*	`AccountNumber` is an identifier for the account.
+*	`Sequence`is the value of a counter measuring how many transactions have been sent from the account. It is used to prevent replay attacks.
+*	`Gas` refers to how much gas, which represents computational resources, Tx consumes. Gas is dependent on the transaction and is not precisely calculated until execution, but can be estimated by providing auto as the value for `Gas`.
+*	`GasAdjustment` can be used to scale gas up in order to avoid underestimating. For example, users can specify their gas adjustment as 1.5 to use 1.5 times the estimated gas.
+*	`GasPrices` specifies how much the user is willing pay per unit of gas, which can be one or multiple denominations of tokens. For example, --gas-prices=0.025uatom, 0.025upho means the user is willing to pay 0.025uatom AND 0.025upho per unit of gas.
+*	`Fees` specifies how much in fees the user is willing to pay in total. Note that the user only needs to provide either `gas-prices` or `fees`, but not both, because they can be derived from each other.
+*	`Simulate` instructs the application to ignore gas and simulate the transaction running without broadcasting.
 
 ### Request Handlers
 
