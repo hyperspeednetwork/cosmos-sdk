@@ -14,9 +14,10 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 
-	"github.com/cosmos/cosmos-sdk/codec"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+
+	"github.com/cosmos/cosmos-sdk/codec"
 
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -37,18 +38,22 @@ import (
 )
 
 var (
-	genesisFile   string
-	paramsFile    string
-	seed          int64
-	numBlocks     int
-	blockSize     int
-	enabled       bool
-	verbose       bool
-	lean          bool
-	commit        bool
-	period        int
-	onOperation   bool // TODO Remove in favor of binary search for invariant violation
-	allInvariants bool
+	genesisFile        string
+	paramsFile         string
+	exportParamsPath   string
+	exportParamsHeight int
+	exportStatePath    string
+	seed               int64
+	numBlocks          int
+	blockSize          int
+	enabled            bool
+	verbose            bool
+	lean               bool
+	commit             bool
+	period             int
+	onOperation        bool // TODO Remove in favor of binary search for invariant violation
+	allInvariants      bool
+	genesisTime        int64
 )
 
 // NewSimAppUNSAFE is used for debugging purposes only.
