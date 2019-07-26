@@ -17,7 +17,7 @@ This document details how to build CLI and REST interfaces for a module.
 
 ## CLI
 
-One of the main interfaces for an application is the [command-line interface](../interfaces/cli.md). This entrypoint created by the application developer will add commands from the application's modules to make [**transactions**](../core/transactions.md) and [**queries**]().  The CLI files are typically found in the module's `/client/cli` folder.
+One of the main interfaces for an application is the [command-line interface](../interfaces/cli.md). This entrypoint created by the application developer will add commands from the application's modules to make [**transactions**](../core/transactions.md) and [**queries**](../building-modules/messages-and-queries.md).  The CLI files are typically found in the module's `/client/cli` folder.
 
 ### Transaction Commands
 
@@ -64,20 +64,7 @@ Application users may find the most intuitive methods of interfacing with the ap
 
 ### Request Types
 
-Request types must be defined for all *transaction* requests. Conventionally, each request is named with the suffix `Req`, e.g. `SendReq` for a Send transaction. Each struct should include a base request `baseReq`, the name of the transaction, and all the arguments the user must provide for the transaction.
-
-`BaseReq` is a type defined in the SDK that encapsulates much of the transaction configurations similar to CLI command flags:
-
-* `From` indicates which account the transaction originates from. This account is used to sign the transaction.
-*	`Memo` sends a memo along with the transaction.
-*	`ChainID` specifies the unique identifier of the blockchain the transaction pertains to.
-*	`AccountNumber` is an identifier for the account.
-*	`Sequence`is the value of a counter measuring how many transactions have been sent from the account. It is used to prevent replay attacks.
-*	`Gas` refers to how much gas, which represents computational resources, Tx consumes. Gas is dependent on the transaction and is not precisely calculated until execution, but can be estimated by providing auto as the value for `Gas`.
-*	`GasAdjustment` can be used to scale gas up in order to avoid underestimating. For example, users can specify their gas adjustment as 1.5 to use 1.5 times the estimated gas.
-*	`GasPrices` specifies how much the user is willing pay per unit of gas, which can be one or multiple denominations of tokens. For example, --gas-prices=0.025uatom, 0.025upho means the user is willing to pay 0.025uatom AND 0.025upho per unit of gas.
-*	`Fees` specifies how much in fees the user is willing to pay in total. Note that the user only needs to provide either `gas-prices` or `fees`, but not both, because they can be derived from each other.
-*	`Simulate` instructs the application to ignore gas and simulate the transaction running without broadcasting.
+Request types must be defined for all *transaction* requests. Conventionally, each request is named with the suffix `Req`, e.g. `SendReq` for a Send transaction. Each struct should include a base request [`baseReq`](../interfaces/rest.md#basereq), the name of the transaction, and all the arguments the user must provide for the transaction.
 
 ### Request Handlers
 
